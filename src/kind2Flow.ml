@@ -698,6 +698,7 @@ let handle_exception process e =
 let run in_sys =
 
   (* Who's active? *)
+  (* 确定哪些模块是激活的 *)
   match Flags.enabled () with
 
   (* Nothing's active. *)
@@ -718,12 +719,17 @@ let run in_sys =
           ~preserve_sig:true ~slice_nodes:false in_sys param
       in
       (* Run interpreter. *)
+      (* Interpreter main 只有一个解释器时执行的主要入口
+         这里面in_sys,param,sys是执行的参数
+       *)
       Interpreter.main (
         Flags.Interpreter.input_file ()
       ) in_sys param sys ;
       (* Ignore SIGALRM from now on *)
+      (* SIGALRM 是一种用于中断程序执行的信号。这里让程序忽视信号 *)
       Signals.ignore_sigalrm () ;
       (* Cleanup before exiting process *)
+      (* 退出清理函数，传入None，m，Exit *)
       on_exit_child None m Exit
     )
     with e -> on_exit_child None m e
@@ -738,9 +744,11 @@ let run in_sys =
   (* Only the contract checker is active.*)
   | [m] when m = `CONTRACTCK -> (
 
+    (* 判断check_solver是不是受支持，只有z3和cvc5_SMTLIB支持 *)
     let check_solver_is_supported () =
       match Flags.Smt.solver () with
       | `Z3_SMTLIB | `cvc5_SMTLIB -> ()
+      (* 遇到其他不受支持的check_solver就会退出运行 *)
       | _ -> (
         KEvent.log L_fatal "Contract checking requires Z3 or cvc5." ;
         KEvent.terminate_log () ;
@@ -756,7 +764,9 @@ let run in_sys =
          existence of a value for a (underspecified) output of a called node depends on
          values beyond the node's interface.
       *)
+      (* 判断当前节点是否是top节点 *)
       let top = (Analysis.info_of_param param).top in
+      (* 判断程序中是否存在asserts，如有，则输出警告，表示不支持 *)
       let model_contains_assert =
         ISys.retrieve_lustre_nodes_of_scope in_sys top
         |> List.exists
@@ -808,6 +818,9 @@ let run in_sys =
               Realizability.Realizable Term.t_true
             else
               if satisfy_input_requirements in_sys param then
+              (* main 合约检查入口。这个函数是这段代码中实际执行合约可实现性检查的入口点。
+                 它接受输入系统 in_sys 和传输系统 sys 作为参数，并返回一个合约可实现性结果。
+                 在这个函数中，会对合约进行分析和判断其是否可实现。 *)
                 ContractChecker.check_contract_realizability in_sys sys
               else
                 Realizability.Unknown
@@ -815,6 +828,7 @@ let run in_sys =
 
           realizability_results := result :: !realizability_results ;
 
+          (* 合约检查结果打印输出语句：可以有三种的方式：普通文本，xml，json *)
           (
             try
               Log.log_result
@@ -829,11 +843,13 @@ let run in_sys =
               KEvent.log L_warn "%s" msg
           ) ;
           
+          (* 如果合约不满足，就判断是否可以执行可满足性检查，是，则进行检查 *)
           Stat.start_timer Stat.analysis_time ;
           match result with
           | Unrealizable _ -> (
             if Flags.Contracts.check_contract_is_sat () then (
               KEvent.log L_note "Checking satisfiability of contract..." ;
+              (* 检查可满足性 *)
               let result =
                 ContractChecker.check_contract_satisfiability sys
               in

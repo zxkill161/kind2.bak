@@ -40,6 +40,7 @@ let read_input_lustre only_parse input_file =
   | Ok None -> None
   | Error e -> R.fail_at_position (E.error_position e) (E.error_message e)
 
+(* 翻译里面的合约内容 *)
 let translate_contracts_lustre = ContractsToProps.translate_file
 
 let read_input_native input_file = Native (NativeInput.of_file input_file)

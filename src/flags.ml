@@ -4116,12 +4116,16 @@ let post_argv_parse_actions () =
   if Global.log_format_json () then print_json_options ()
 
 
+(* 用于解析命令行参数并进行相应的配置和处理。
+ *)
 let parse_argv () =
   (* CLAPing. *)
   parse_clas (Global.all_kind2_specs ()) anon_action ;
 
   (* Colors if flag is not false and not in xml or json mode *)
+  (* 打开 Format 模块，以便在下面的代码中可以使用其中的函数。 *)
   let open Format in
+  (* 如果颜色选项为开启且不处于 XML 或 JSON 模式下，启用颜色打印 *)
   if color () && not (log_format_xml () || log_format_json ()) then begin
     pp_set_tags std_formatter true;
     pp_set_tags err_formatter true;
@@ -4131,9 +4135,11 @@ let parse_argv () =
   post_argv_parse_actions ();
 
   (* If any module info was requested, print it and exit. *)
+  (* 打印帮助信息并退出  *)
   Global.help_of () |> List.rev |> print_module_info ;
 
   (* Check solver on path *)
+  (* 检查SMT求解器   *)
   Smt.check_smtsolver ();
 
   Smt.check_qe_solver ();
@@ -4141,6 +4147,7 @@ let parse_argv () =
   Smt.check_itp_solver ();
 
   (* Finalize the list of enabled module. *)
+(* 完成启用的模块列表的最终配置 *)
   Global.finalize_enabled ();
 
   IVC.finalize_ivc_elements ();
@@ -4162,13 +4169,16 @@ let parse_argv () =
   | _, `Z3_SMTLIB -> solver_dependant_actions `Z3_SMTLIB
   | _, _ -> ()) ;
 
+  (* 如果启用了证明生成 *)
   if Certif.proof () then solver_dependant_actions `cvc5_SMTLIB;
 
+  (* 如果启用了 IVC 计算和压缩选项 *)
   if IVC.compute_ivc () && BmcKind.compress () then (
     BmcKind.disable_compress () ;
     Log.log L_warn "IVC post-analysis enabled: disabling ind_compress"
   );
 
+  (* 如果启用了可达性检查选项 *)
   if Global.check_reach () then (
     if IVC.compute_ivc () then (
       Log.log L_warn "IVC post-analysis enabled: disabling reachability checks";
