@@ -1034,6 +1034,14 @@ let define_subsystems trans_sys define =
 (* Define predicates, declare constant and global state variables, and
    declare state variables of the top system between and including the
    given offsets *)
+(* TransSys.define_and_declare_of_bounds 函数用于定义和声明转换系统的未解析函数和变量，并使用给定的边界条件。该函数接受以下参数：
+
+  trans_sys：转换系统的实例。
+  define：定义未解析函数的函数。
+  declare：声明未解析函数的函数。
+  declare_sort：声明排序的函数。
+  lbound：转换步数的下界。
+  ubound：转换步数的上界。 *)
 let define_and_declare_of_bounds
     ?(declare_sub_vars=false) 
     trans_sys

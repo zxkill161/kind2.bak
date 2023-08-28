@@ -71,6 +71,7 @@ let main input_file input_sys _ trans_sys =
   (*trans_svars |> List.iter (fun sv -> KEvent.log_uncond "%a" StateVar.pp_print_state_var sv) ;*)
 
   (* Read inputs from file *)
+  (* 从文件读入，main函数是InputParser.read_file *)
   let inputs =
     if input_file = "" then []
     else
@@ -81,8 +82,10 @@ let main input_file input_sys _ trans_sys =
         raise (Failure "main")
   in
 
+  (* 代码使用 List.filter 和 StateVar.is_input 来过滤出输入状态变量，并计算其数量，并将其赋值给变量 nb_inputs *)
   let nb_inputs = List.filter StateVar.is_input trans_svars |> List.length in
 
+  (* 代码对输入进行检查，确保常量输入确实是常量。代码遍历每个输入，对于每个常量输入状态变量，检查其输入值列表是否都相等。如果发现输入值不相等，则记录一个警告日志消息，并抛出一个 Failure 异常。 *)
   (* Check that constant inputs are indeed constant. *)
   inputs |> List.iter (
     function
@@ -104,12 +107,26 @@ let main input_file input_sys _ trans_sys =
   ) ;
 
   (* Remove sliced inputs *)
+  (* 代码使用 List.filter 和 List.exists 来过滤出与转换系统中的状态变量匹配的输入，并将结果赋值给变量 inputs *)
   let inputs = List.filter (fun ((sv,_), _) ->
       List.exists (StateVar.equal_state_vars sv) trans_svars
     ) inputs
   in
 
   (* Minimum number of steps in input *)
+  (* 代码使用 List.fold_left 和 List.length 来计算输入的最小步数，并将其赋值给变量 input_length
+    计算输入的最小步数是指确定输入数据中最短的列表的长度。在这段代码中，输入数据是由 `inputs` 列表表示的。每个输入是一个二元组，其中第一个元素是输入状态变量，第二个元素是一个输入值的列表。因此，`inputs` 列表的结构大致如下：
+
+    ```
+    inputs = [ ((sv1, _), [val11; val12; ...]);
+           ((sv2, _), [val21; val22; ...]);
+           ...
+         ]
+    ```
+
+    每个输入值的列表可能有不同的长度。计算输入的最小步数就是找到输入值列表中最短的长度。在代码中，使用 `List.fold_left` 和 `List.length` 循环遍历 `inputs` 列表，逐个获取输入值列表，并将其长度与累积的最小步数进行比较，取较小值作为新的最小步数。最后，最小步数将存储在变量 `input_length` 中。
+
+    这个最小步数的计算对于确定输入数据的有效性和一致性非常重要。在模型验证等领域中，输入数据的长度通常会影响到系统行为的分析和验证的范围。因此，计算输入的最小步数可以帮助确保输入数据的一致性和正确性。 *)
   let input_length = 
     List.fold_left 
       (fun accum (_, inputs) -> 
@@ -133,6 +150,9 @@ let main input_file input_sys _ trans_sys =
     inputs;
 
   (* Number of steps to simulate *)
+  (* 代码根据用户定义的模拟步数来确定要模拟的步数 steps。通过调用 Flags.Interpreter.steps 函数获取用户定义的模拟步数。
+     如果用户没有指定步数或步数小于等于0，则将 steps 设置为 input_length，即最小输入列表的长度。
+     否则，如果用户指定的步数大于 input_length 并且存在输入变量，则记录一个警告日志消息，指示输入不足以模拟指定的步数，并将 steps 设置为用户指定的步数。 *)
   let steps = 
 
     match Flags.Interpreter.steps () with 
@@ -162,6 +182,10 @@ let main input_file input_sys _ trans_sys =
   let logic = TransSys.get_logic trans_sys in
 
   (* Create solver instance *)
+
+  (* 首先创建了一个 SMT 求解器实例 solver。
+     通过调用 Flags.Smt.solver 函数获取用户定义的 SMT 求解器类型，并使用 SMTSolver.create_instance 函数创建实例。
+     produce_models:true 参数表示该求解器实例将生成模型。 *)
   let solver = 
     Flags.Smt.solver ()
     |> SMTSolver.create_instance ~produce_models:true logic
@@ -171,6 +195,7 @@ let main input_file input_sys _ trans_sys =
   ref_solver := Some solver;
 
   (* Defining uf's and declaring variables. *)
+  (* 用于定义和声明转换系统的未解析函数和变量，并使用给定的边界条件。 *)
   TransSys.define_and_declare_of_bounds
     trans_sys
     (SMTSolver.define_fun solver)
@@ -179,6 +204,8 @@ let main input_file input_sys _ trans_sys =
     Numeral.(~- one) Numeral.(of_int steps) ;
 
   (* Assert initial state constraint *)
+(* 代码通过调用 SMTSolver.assert_term 函数添加了初始状态约束。
+   使用 TransSys.init_of_bound 函数生成约束，并使用 SMTSolver.declare_fun 函数声明变量。这个约束表示系统的初始状态必须满足转换系统的边界条件。 *)
     SMTSolver.assert_term solver
       (TransSys.init_of_bound (Some (SMTSolver.declare_fun solver))
          trans_sys Numeral.zero);
@@ -188,6 +215,11 @@ let main input_file input_sys _ trans_sys =
 
   (* Assert equation of state variable and its value at each
      instant *)
+  (* 建模系统状态变化：通过将状态变量和其在每个时间步骤上的值添加到约束中，这段代码帮助建模系统的状态变化。约束将系统的状态限制为特定的值和时间步骤，从而定义了系统在模拟和验证过程中的行为。
+
+  约束求解器的可满足性：将约束添加到求解器中后，可以使用求解器来检查约束的可满足性。如果约束是不可满足的，则意味着系统的状态和值之间存在冲突，即系统的行为是不一致的。这对于验证模型的正确性和一致性是很有用的。
+
+  支持模拟和验证过程：通过将状态变量和值添加到约束中，这段代码为后续的模拟和验证过程提供了基础。在模拟过程中，可以使用约束来生成系统的执行路径，以验证系统的行为是否满足预期。在验证过程中，约束可以用于检查系统的性质和约束条件是否被满足。 *)
   List.iter
 
     (fun ((state_var, indexes), values) ->
@@ -230,11 +262,18 @@ let main input_file input_sys _ trans_sys =
     (Flags.input_file ()); 
 
   (* Run the system *)
+  (* main 使用 SMTSolver.check_sat 函数检查求解器 solver 是否具有可满足的模型。如果有可满足的模型，继续执行下一步；如果没有可满足的模型，则跳过执行路径提取和输出的步骤。 *)
   if (SMTSolver.check_sat solver) then
 
     (
 
       (* Extract execution path from model *)
+      (* 使用 Model.path_from_model 函数从模型中提取执行路径。该函数接受以下参数：
+
+      TransSys.state_vars trans_sys：转换系统的状态变量列表。
+      SMTSolver.get_var_values solver：求解器中的变量值。
+      Numeral.(pred (of_int steps))：模拟的步数。
+      它返回一个路径，表示系统的执行轨迹。 *)
       let path = 
         Model.path_from_model 
           (TransSys.state_vars trans_sys)

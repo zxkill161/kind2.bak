@@ -882,6 +882,7 @@ let run in_sys =
     exit ExitCodes.error
 
   (* MCS is active. *)
+  (* 当开启MCS时构建整个系统的传输系统 *)
   | modules when List.mem `MCS modules -> (
 
     try (
@@ -894,6 +895,11 @@ let run in_sys =
       let params = ISys.mcs_params in_sys in
       let run_mcs param =
         (* Build trans sys and slicing info. *)
+       (*  main：构建了系统的传输系统
+            系统的传输系统是一种用于模型检查的形式化表示。它是一个有向图，其中节点表示系统的状态，边表示系统状态之间的转换。传输系统描述了系统在执行过程中状态的变化和转换的方式。
+            传输系统在模型检查中起着重要的作用，因为它提供了系统状态和状态转换的形式化表示。它可以用于定义系统的初始状态、状态转换规则和属性或规范，以便进行验证和分析。
+            通过构建系统的传输系统，可以进行各种模型检查操作，如路径搜索、状态空间探索和属性验证。传输系统可以帮助检测系统中的错误、死锁、活锁、冲突等问题，并验证系统是否满足特定的性质或规约。
+         *)
         let sys, _ =
           ISys.trans_sys_of_analysis
             (*~preserve_sig:true ~slice_nodes:false*) in_sys param
@@ -901,6 +907,7 @@ let run in_sys =
         KEvent.log_analysis_start sys param ;
         Stat.start_timer Stat.analysis_time ;
         
+        (* main：开始mcs分析操作 *)
         PostAnalysis.run_mcs_post_analysis in_sys param
           (analyze msg_setup false) sys |> ignore ;
 
@@ -931,6 +938,7 @@ let run in_sys =
     let msg_setup = KEvent.setup () in
 
     (* Runs the next analysis, if any. *)
+    (* 递归遍历ISys.next_analysis_of_strategy中的所有参数，对每个参数进行构建传输系统、SMT跟踪等操作 *)
     let rec loop ac () =
       match ISys.next_analysis_of_strategy in_sys !all_results with
       
@@ -944,7 +952,10 @@ let run in_sys =
         (* Format.printf "%a" (TSys.pp_print_subsystems true) sys; *)
 
         (* Should we run post analysis treatment? *)
-        ( match !latest_trans_sys with
+       (*  检查是否需要运行后分析处理：如果 latest_trans_sys 中存在旧的传输系统，并且旧的传输系统的范围与当前传输系统的范围不相等，则执行后分析处理。
+        这可能涉及运行一些后处理操作，以及使用分析结果进行进一步的分析。
+         *)
+       ( match !latest_trans_sys with
           | Some old when TSys.equal_scope old sys |> not ->
             PostAnalysis.run in_sys (TSys.scope_of_trans_sys old) (
               analyze msg_setup false
