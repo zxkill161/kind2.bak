@@ -41,6 +41,12 @@ let result_to_string = function
   | Unrealizable _ -> "unrealizable"
   | Unknown -> "unknown"
 
+(* 用于将约束条件根据给定的变量列表进行分区 *)
+(* 函数首先利用VS.of_list函数将变量列表转换为一个变量集合var_set。
+然后，函数利用List.partition函数对约束条件列表进行遍历，并根据给定的变量列表进行分区。
+对于每个约束条件c，函数利用VS.inter函数计算该约束条件中的变量集合与给定变量集合的交集，
+然后利用VS.is_empty函数判断交集是否为空。如果交集为空，表示该约束条件不包含给定的变量列表中的任何变量，将其归为第一部分；否则，将其归为第二部分。
+最后，函数返回一个元组，包含了分区后的两部分约束条件。 *)
 let term_partition vars_of_term var_lst term_lst =
   let var_set = VS.of_list var_lst in
   term_lst |> List.partition (fun c ->
@@ -149,6 +155,7 @@ let realizability_check ?(include_invariants=false) vars_of_term
   let term_partition = term_partition vars_of_term in
 
   (* Solver for term simplification *)
+  (* 函数创建一个SMT求解器solver，并对过渡系统进行一些定义和声明，用于后续的求解过程。 *)
   let solver =
     SMTSolver.create_instance
       (TSys.get_logic sys)
@@ -157,6 +164,7 @@ let realizability_check ?(include_invariants=false) vars_of_term
 
   SMTSolver.trace_comment solver "Realizability Check (term simplification)" ;
 
+  (* 代码调用TransSys.define_and_declare_of_bounds函数，对过渡系统进行定义和声明。 *)
   TransSys.define_and_declare_of_bounds
     sys
     (SMTSolver.define_fun solver)
@@ -166,10 +174,14 @@ let realizability_check ?(include_invariants=false) vars_of_term
 
   (*Format.printf "%a@." (TSys.pp_print_subsystems true) sys ;*)
 
+  (* 判断是否存在不可控变量，为后续的可实现性检查做准备 *)
   let uncontrollable_varset_is_non_empty =
     List.length controllable_vars_at_1 < List.length vars_at_1
   in
 
+  (* 代码根据是否包括不变量include_invariants来决定如何构造约束条件trans。
+     如果包括不变量，则通过TransSys.invars_of_bound函数获取初始状态的不变量，并使用Term.mk_and函数将初始状态的约束条件和过渡关系拼接在一起。
+     如果不包括不变量，则直接使用过渡关系作为约束条件。 *)
   let free_of_controllable_vars_at_1, contains_controllable_vars_at_1 =
     let trans =
       if include_invariants then
@@ -188,6 +200,11 @@ let realizability_check ?(include_invariants=false) vars_of_term
        and assertion of a boolean state variable.
        When invariants are included, the partitioning adds them to
        the first part (free_of_controllable_vars_at_1) *)
+
+    (* 翻译：首先，term_partition函数假设约束条件中的可控变量至少包含当前状态中的一个可控变量。这是因为如果过渡系统是Lustre模型的直接转换，那么所有的约束条件都是通过定义和断言布尔状态变量来引入的。因此，在当前状态中至少有一个可控变量。
+    其次，当包括不变量时，分区操作将不变量添加到第一部分free_of_controllable_vars_at_1中。这是因为不变量与过渡关系不同，它们是在约束条件中引入的，并且可能包含可控变量。
+*)
+
     term_partition controllable_vars_at_1 (get_conjucts trans)
   in
 
@@ -220,10 +237,24 @@ let realizability_check ?(include_invariants=false) vars_of_term
     (*Format.printf "T: %a@." Term.pp_print_term premises ;
     Format.printf "C: %a@." Term.pp_print_term conclusion ;*)
 
+    (* 这段代码实现了一个循环迭代的函数`loop`，用于求解一个特定的问题。
+    具体来说，这段代码的目标是找到一个不动点`fp`，使得一系列约束条件在该不动点下成立。
+    代码的主要逻辑如下：
+    1. 首先，根据当前的不动点`fp`，构造一组前提条件`premises`和结论`conclusion`。
+    2. 然后，通过调用`QE.ae_val`函数进行可满足性判断，判断是否存在一个满足前提条件且满足结论的解。如果判断结果为`QE.Valid`，表示存在这样的解，进一步处理；如果判断结果为`QE.Unknown`，表示无法确定可满足性，返回`Unknown`。
+    3. 如果存在这样的解，先打印计算得到的不动点`fp`，然后根据当前的不动点`fp`，构造一组新的前提条件`premises'`和结论`conclusion'`。
+    4. 然后，通过调用`QE.ae_val`函数进行可满足性判断，判断是否存在一个满足前提条件且满足结论的解。如果判断结果为`QE.Valid`，表示存在这样的解，返回`Realizable fp`；如果判断结果为`QE.Unknown`，表示无法确定可满足性，返回`Unknown`；如果判断结果为`QE.Invalid`，表示不存在这样的解，进一步处理。
+    5. 如果不存在这样的解，先打印计算得到的有效区域`valid_region`，然后根据是否存在不可控变量进行不同的处理。
+    6. 如果存在不可控变量，根据当前的不动点`fp`，构造一组新的前提条件`premises'`和结论`conclusion'`，并进行可满足性判断。
+    7. 如果判断结果为`QE.Valid`，表示存在违反区域，打印违反区域的信息，并根据是否存在初始状态进行不同的处理。
+    8. 如果存在初始状态，构造新的不动点`fp'`，然后通过递归调用`loop`函数，将新的不动点`fp'`和当前的不动点`fp1'`作为参数，进行下一轮的迭代。
+    9. 如果不存在初始状态，直接构造新的不动点`fp'`，然后通过递归调用`loop`函数，将新的不动点`fp'`和当前的不动点`fp1'`作为参数，进行下一轮的迭代。
+    10. 最终，函数返回一个结果，可能是`Unknown`、`Realizable`或`Unrealizable`，表示问题的求解结果。
+    总的来说，这段代码是通过循环迭代的方式，不断更新不动点，并利用可满足性判断来判断是否存在一个满足约束条件的解，以解决特定的问题。 *)
+
     let ae_val_reponse =
       QE.ae_val sys premises controllable_vars_at_1 conclusion
     in
-
     match ae_val_reponse with
     | QE.Unknown -> Unknown
     | QE.Valid _ -> (

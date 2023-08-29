@@ -2463,16 +2463,20 @@ let trans_sys_of_nodes
     )
   );
 
+  (* main:从subsystems列表中找到顶层系统的子系统，并将结果赋值给subsystem'变量。 *)
   let subsystem' = SubSystem.find_subsystem_of_list subsystems top in
   
+  (* 首先通过模式匹配将subsystem'中的源代码赋值给{ N.name = top_name }变量，并将整个subsystem'赋值给subsystem'变量。 *)
   let { SubSystem.source = { N.name = top_name } } as subsystem' =
     let preserve_sig, slice_nodes =
       options.preserve_sig, options.slice_nodes
     in
+    (* main:调用S.slice_to_abstraction函数，将子系统subsystem'切片为抽象系统。 *)
     S.slice_to_abstraction
       ~preserve_sig slice_nodes analysis_param subsystem'
   in
 
+  (* main:从子系统中获取所有节点，并将结果赋值给nodes变量。 *)
   let nodes = N.nodes_of_subsystem subsystem' in
 
 
@@ -2481,6 +2485,7 @@ let trans_sys_of_nodes
     try 
 
       (* Create a transition system for each node *)
+      (* main:通过调用trans_sys_of_node'函数创建每个节点的过渡系统，并使用I.Map.find函数查找顶层节点的过渡系统。最终将过渡系统赋值给trans_sys变量。 *)
       trans_sys_of_node'
         options
         globals
@@ -2498,7 +2503,7 @@ let trans_sys_of_nodes
     with Not_found -> assert false
 
   in
-  
+  (* main:使用match语句匹配analysis_param的类型。如果analysis_param是A.Refinement类型，表示进行的是一次细化分析。 *)
   ( match analysis_param with
     | A.Refinement (_,result) ->
       (* The analysis that's going to run is a refinement. *)

@@ -406,6 +406,7 @@ let trans_sys_of_analysis (type s)
 ?(add_functional_constraints = Flags.Contracts.enforce_func_congruence ())
 : s t -> Analysis.param -> TransSys.t * s t = function
 
+  (* main: 函数调用LustreTransSys.trans_sys_of_nodes函数来将Lustre语言的主系统和全局变量转换为一个过渡系统。 *)
   | Lustre (main_subs, globals, ast) -> (
     function analysis ->
       let t, s =

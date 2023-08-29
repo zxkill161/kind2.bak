@@ -90,6 +90,7 @@ type param =
   (* First analysis of a system. *)
   | First of info
   (* Refinement of a system. Store the result of the previous analysis. *)
+  (* 系统的细化分析的参数 *)
   | Refinement of info * result
 
 

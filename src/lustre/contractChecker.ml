@@ -160,15 +160,22 @@ let check_contract_realizability in_sys sys =
     compute_controllable_vars in_sys sys vars_at_1
   in
 
+  (* 获取调用系统的输出参数的信息，以便在后续的实现性检查中使用。 *)
   let call_output_args =
     let instances =
+      (* 首先通过调用TSys.get_subsystem_instances函数获取过渡系统sys中的子系统实例，并将其存储在instances变量中。 *)
       TSys.get_subsystem_instances sys |> List.map fst
     in
+    (* 然后使用List.fold_left函数对每个调用系统进行迭代。
+       对于每个调用系统called_sys，代码获取其作用域（scope）、初始化节点的符号（init_uf_symbol）和过渡节点的符号（trans_uf_symbol） *)
     List.fold_left
       (fun acc called_sys ->
         let scope = TSys.scope_of_trans_sys called_sys in
         let init_uf_symbol = TSys.init_uf_symbol called_sys in
         let trans_uf_symbol = TSys.trans_uf_symbol called_sys in
+        (* 通过调用ISys.get_lustre_node函数，
+           根据输入系统in_sys和作用域scope获取对应的Lustre节点的输入、神谕和输出信息。
+           如果无法找到对应的Lustre节点，则会触发assert false。 *)
         match ISys.get_lustre_node in_sys scope with
         | None -> assert false
         | Some { LN.inputs; LN.oracles; LN.outputs } -> (
@@ -183,6 +190,8 @@ let check_contract_realizability in_sys sys =
       instances
   in
 
+  (* 代码计算输入、神谕和输出的数量，
+     并使用UFM.add函数将初始化节点的符号和过渡节点的符号与相应的数量关联，并将结果存储在acc中。 *)
   let vars_of_term term =
     match Term.destruct term with
     | Term.T.App (s, args) when
@@ -201,6 +210,7 @@ let check_contract_realizability in_sys sys =
     | _ -> Term.vars_of_term term
   in
 
+  (* main:realizability_check函数用于进行实现性检查，并使用vars_of_term函数来获取项中的变量。 *)
   realizability_check
     vars_of_term sys controllable_vars_at_0 vars_at_1 controllable_vars_at_1
 
