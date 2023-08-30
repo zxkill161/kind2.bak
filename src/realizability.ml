@@ -237,7 +237,7 @@ let realizability_check ?(include_invariants=false) vars_of_term
     (*Format.printf "T: %a@." Term.pp_print_term premises ;
     Format.printf "C: %a@." Term.pp_print_term conclusion ;*)
 
-    (* 这段代码实现了一个循环迭代的函数`loop`，用于求解一个特定的问题。
+    (* main：这段代码实现了一个循环迭代的函数`loop`，用于求解一个特定的问题。
     具体来说，这段代码的目标是找到一个不动点`fp`，使得一系列约束条件在该不动点下成立。
     代码的主要逻辑如下：
     1. 首先，根据当前的不动点`fp`，构造一组前提条件`premises`和结论`conclusion`。

@@ -180,6 +180,7 @@ let record_to_tuple assoc =
 (* Take as input a JSON element representing the value of a variable (at a given step)
    and return the associated assignments.
    It can return multiple variable assignements if the value is an array/record/tuple. *)
+(* 根据输入的JSON元素（表示变量的值），返回关联的赋值结果。如果值是一个数组、记录或元组，则可能返回多个变量赋值。 *)
 let rec read_val scope name indexes arr_indexes json =
   match json with
   | `Assoc lst ->
@@ -299,6 +300,8 @@ let read_json_file top_scope_index filename =
 (* ====================== GENERAL ======================== *)
 
 (* Parse a JSON or CSV input file. The format is determined from the extension. *)
+(* 首先，函数使用Filename.check_suffix函数检查文件名的扩展名是否为.json。如果是，则调用read_json_file函数来解析JSON文件，并将top_scope_index和filename作为参数传递给它。
+如果文件名的扩展名不是.json，则调用read_csv_file函数来解析CSV文件。然后，使用List.map函数对解析结果进行处理，将每个(sv,vs)元组转换为((sv,[]),vs)元组。这样做是为了与JSON文件的格式保持一致，其中sv表示顶层范围变量，vs表示变量的值列表。 *)
 let read_file top_scope_index filename =
   if Filename.check_suffix filename ".json"
   then

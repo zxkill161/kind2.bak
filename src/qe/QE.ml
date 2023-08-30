@@ -820,7 +820,8 @@ let ae_val_prec trans_sys premise elim conclusion =
   SMTSolver.assert_term solver premise ;
 
   let res =
-
+    (* 判断了前提条件的可满足性。它通过调用SMT求解器的check_sat函数来检查前提条件是否可满足。
+       如果前提条件不可满足，即返回值为false，则将结果设为Valid (Term.t_false)，表示无效。 *)
     if not (SMTSolver.check_sat solver) then (
 
       Valid (Term.t_false)
@@ -830,7 +831,7 @@ let ae_val_prec trans_sys premise elim conclusion =
     else (
 
       SMTSolver.assert_term solver conclusion;
-
+      (* 将结论条件添加到求解器中，并再次进行可满足性检查。如果结论条件不可满足，则将结果设为Invalid (Term.t_false)，表示无效。 *)
       if not (SMTSolver.check_sat solver) then
 
         Invalid (Term.t_false)
@@ -848,6 +849,9 @@ let ae_val_prec trans_sys premise elim conclusion =
           |> Term.mk_and
         in
 
+        (* 尝试对合取项取否定。
+           如果取否定成功，则将结果设为取否定后的项。
+           如果取否定失败，并且合取项中仍然存在量词，则抛出一个自定义的异常QuantifiedTermFound， *)
         let neg_term =
           try
 
@@ -862,6 +866,9 @@ let ae_val_prec trans_sys premise elim conclusion =
               raise e
         in
 
+        (* 使用SMT求解器的simplify_term函数对合取项进行简化。
+        然后，它在简化项之后将取否定后的项添加到求解器中。接着，再次进行可满足性检查。如果取否定后的项不可满足，则将结果设为Valid simpl_term，表示有效。否则，将结果设为Invalid simpl_term，表示无效。
+        最后，它删除求解器实例，并将结果返回。 *)
         let simpl_term =
           SMTSolver.simplify_term solver (Term.mk_and [premise; term])
         in
@@ -883,6 +890,8 @@ let ae_val_prec trans_sys premise elim conclusion =
 
   res
 
+(* 定义了一个名为ae_val的函数，用于进行可满足性判断。它接受参数trans_sys（过渡系统）、premise（前提条件）、elim（可控变量）和conclusion（结论）。
+函数内部使用了一个try...with语句块来捕获QuantifiedTermFound异常。在try块中，首先通过调用Flags.QE.ae_val_use_ctx ()函数来判断是否使用上下文处理。如果返回值为true，则调用ae_val_prec函数进行可满足性判断；否则，调用ae_val_gen函数进行可满足性判断。 *)
 let ae_val trans_sys premise elim conclusion =
   try
     if Flags.QE.ae_val_use_ctx () then
