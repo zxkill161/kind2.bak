@@ -187,7 +187,7 @@ let main () =
   )
   | None ->
     try
-      (* main: 不翻译合约，开始执行 *)
+      (* main 不翻译合约，开始执行 *)
       Kind2Flow.run input_sys
     with e -> (
       KEvent.log L_fatal "Caught unexpected exception: %s" (Printexc.to_string e) ;

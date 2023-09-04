@@ -766,7 +766,7 @@ let run in_sys =
       *)
       (* 判断当前节点是否是top节点 *)
       let top = (Analysis.info_of_param param).top in
-      (* 判断程序中是否存在asserts，如有，则输出警告，表示不支持 *)
+      (* 判断程序中是否存在断言，如有，则输出警告，表示不支持 *)
       let model_contains_assert =
         ISys.retrieve_lustre_nodes_of_scope in_sys top
         |> List.exists
@@ -843,7 +843,7 @@ let run in_sys =
               KEvent.log L_warn "%s" msg
           ) ;
           
-          (* 如果合约不满足，就判断是否可以执行可满足性检查，是，则进行检查 *)
+          (* 如果合约不可实现，就判断是否可以执行可满足性检查，是，则进行检查 *)
           Stat.start_timer Stat.analysis_time ;
           match result with
           | Unrealizable _ -> (
@@ -957,6 +957,11 @@ let run in_sys =
          *)
        ( match !latest_trans_sys with
           | Some old when TSys.equal_scope old sys |> not ->
+            (* PostAnalysis.run函数的参数如下：
+            in_sys：输入系统，表示分析的输入系统。
+            scope：传输系统的作用域，表示当前分析的传输系统的作用域。
+            analyze：分析函数，表示要对之前的所有结果进行分析的函数。
+            all_results：所有结果，表示之前的所有分析结果。 *)
             PostAnalysis.run in_sys (TSys.scope_of_trans_sys old) (
               analyze msg_setup false
             ) !all_results
