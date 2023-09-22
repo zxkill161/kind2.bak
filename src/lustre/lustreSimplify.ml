@@ -1300,6 +1300,10 @@ let rec eval_ast_expr bounds ctx =
 
     fail_at_position pos "Parametric nodes not supported" 
 
+  | A.ChooseOp (pos, _, _, _) -> 
+    
+    fail_at_position pos "Choose operation not supported in old front end"
+
 
 
 (* ******************************************************************** *)
@@ -1585,15 +1589,6 @@ and eval_binary_ast_expr bounds ctx pos mk expr1 expr2 =
              "Type mismatch for expressions %a and %a" 
              A.pp_print_expr expr1
              A.pp_print_expr expr2)
-
-      | E.NonConstantShiftOperand ->
-
-        fail_at_position
-          pos
-          (Format.asprintf
-             "Second argument %a to shift operation 
-              must be constant"
-              A.pp_print_expr expr2)
 
   in
 

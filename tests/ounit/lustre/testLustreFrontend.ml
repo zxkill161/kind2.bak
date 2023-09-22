@@ -110,8 +110,12 @@ let _ = run_test_tt_main ("frontend LustreSyntaxChecks error tests" >::: [
     match load_file "./lustreSyntaxChecks/function_no_pre_in_body.lus" with
     | Error (`LustreSyntaxChecksError (_, IllegalTemporalOperator _)) -> true
     | _ -> false);
-  mk_test "test function contract with stateful import" (fun () ->
+  mk_test "test function contract with stateful import 1" (fun () ->
     match load_file "./lustreSyntaxChecks/function_stateful_contract_import.lus" with
+    | Error (`LustreSyntaxChecksError (_, IllegalImportOfStatefulContract _)) -> true
+    | _ -> false);
+  mk_test "test function contract with stateful import 2" (fun () ->
+    match load_file "./lustreSyntaxChecks/function_stateful_contract_import_2.lus" with
     | Error (`LustreSyntaxChecksError (_, IllegalImportOfStatefulContract _)) -> true
     | _ -> false);
   mk_test "test merge clock mismatch" (fun () ->
@@ -128,6 +132,10 @@ let _ = run_test_tt_main ("frontend LustreSyntaxChecks error tests" >::: [
     | _ -> false);
   mk_test "test call in cone of influence 2" (fun () ->
     match load_file "./lustreSyntaxChecks/no_node_subject_to_refinement_in_contract_2.lus" with
+    | Error (`LustreSyntaxChecksError (_, NodeCallInRefinableContract _)) -> true
+    | _ -> false);
+  mk_test "test call in cone of influence 3" (fun () ->
+    match load_file "./lustreSyntaxChecks/no_node_subject_to_refinement_in_contract_3.lus" with
     | Error (`LustreSyntaxChecksError (_, NodeCallInRefinableContract _)) -> true
     | _ -> false);
   mk_test "test unsupported current expr" (fun () ->
@@ -150,6 +158,10 @@ let _ = run_test_tt_main ("frontend LustreSyntaxChecks error tests" >::: [
     match load_file "./lustreSyntaxChecks/function_no_stateful_contract.lus" with
     | Error (`LustreSyntaxChecksError (_, IllegalTemporalOperator _)) -> true
     | _ -> false);  
+  mk_test "test node call in function contract" (fun () ->
+    match load_file "./lustreSyntaxChecks/function_no_stateful_contract_2.lus" with
+    | Error (`LustreSyntaxChecksError (_, NodeCallInFunction _)) -> true
+    | _ -> false);
   mk_test "test defining a variable more than once 1" (fun () ->
     match load_file "./lustreSyntaxChecks/var_redefinition.lus" with
     | Error (`LustreSyntaxChecksError (_, DuplicateOutput _)) -> true
@@ -220,6 +232,14 @@ let _ = run_test_tt_main ("frontend lustreArrayDependencies error tests" >::: [
 let _ = run_test_tt_main ("frontend LustreAstDependencies error tests" >::: [
   mk_test "test cyclic definition of contracts" (fun () ->
     match load_file "./lustreAstDependencies/circular_contracts.lus" with
+    | Error (`LustreAstDependenciesError (_, CyclicDependency _)) -> true
+    | _ -> false);
+  mk_test "test cyclic definition of function contracts" (fun () ->
+    match load_file "./lustreAstDependencies/circular_contracts_2.lus" with
+    | Error (`LustreAstDependenciesError (_, CyclicDependency _)) -> true
+    | _ -> false);
+  mk_test "test cyclic definition of a contract of a node called in a contract" (fun () ->
+    match load_file "./lustreAstDependencies/circular_contracts_3.lus" with
     | Error (`LustreAstDependenciesError (_, CyclicDependency _)) -> true
     | _ -> false);
   mk_test "test cyclic definition of nodes" (fun () ->
@@ -375,10 +395,6 @@ let _ = run_test_tt_main ("frontend LustreTypeChecker error tests" >::: [
     match load_file "./lustreTypeChecker/abstract_type.lus" with
     | Error (`LustreTypeCheckerError (_, ExpectedNumberTypes _)) -> true
     | _ -> false);
-  mk_test "test non constant bit shift" (fun () ->
-    match load_file "./lustreTypeChecker/bv-sh-exception.lus" with
-    | Error (`LustreTypeCheckerError (_, ExpectedBitShiftConstant)) -> true
-    | _ -> false);
   mk_test "test non-number (bool) cast to int" (fun () ->
     match load_file "./lustreTypeChecker/cast_01.lus" with
     | Error (`LustreTypeCheckerError (_, InvalidConversion _)) -> true
@@ -450,10 +466,6 @@ let _ = run_test_tt_main ("frontend LustreTypeChecker error tests" >::: [
   mk_test "test machine int op 5" (fun () ->
     match load_file "./lustreTypeChecker/machine_integer_05.lus" with
     | Error (`LustreTypeCheckerError (_, ExpectedBitShiftMachineIntegerType _)) -> true
-    | _ -> false);
-  mk_test "test machine int op 6" (fun () ->
-    match load_file "./lustreTypeChecker/machine_integer_06.lus" with
-    | Error (`LustreTypeCheckerError (_, ExpectedBitShiftConstant)) -> true
     | _ -> false);
   mk_test "test merge case missing" (fun () ->
     match load_file "./lustreTypeChecker/merge_enum.lus" with
@@ -582,6 +594,14 @@ let _ = run_test_tt_main ("frontend LustreTypeChecker error tests" >::: [
   mk_test "test open interval with no bounds" (fun () ->
     match load_file "./lustreTypeChecker/open_interval.lus" with
     | Error (`LustreTypeCheckerError (_, IntervalMustHaveBound)) -> true
+    | _ -> false);
+  mk_test "test nondeterministic choice type error" (fun () ->
+    match load_file "./lustreTypeChecker/nondeterministic_choice.lus" with
+    | Error (`LustreTypeCheckerError (_, ExpectedIntegerTypes _)) -> true
+    | _ -> false);
+  mk_test "test nondeterministic choice type error 2" (fun () ->
+    match load_file "./lustreTypeChecker/nondeterministic_choice_2.lus" with
+    | Error (`LustreTypeCheckerError (_, UnificationFailed _)) -> true
     | _ -> false);
 ])
 

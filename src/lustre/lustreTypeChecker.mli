@@ -64,7 +64,6 @@ type error_kind = Unknown of string
   | ExpectedIntegerTypes of tc_type * tc_type
   | ExpectedNumberTypes of tc_type * tc_type
   | ExpectedMachineIntegerTypes of tc_type * tc_type
-  | ExpectedBitShiftConstant
   | ExpectedBitShiftConstantOfSameWidth of tc_type
   | ExpectedBitShiftMachineIntegerType of tc_type
   | InvalidConversion of tc_type * tc_type
@@ -110,6 +109,11 @@ val get_node_ctx : tc_context ->
   'a * 'b * 'c * LA.const_clocked_typed_decl list *
   LA.clocked_typed_decl list * LA.node_local_decl list * 'd * 'e ->
   (tc_context, [> error ]) result
+  
+val build_node_fun_ty : Lib.position ->
+  tc_context ->
+  LA.const_clocked_typed_decl list ->
+  LA.clocked_typed_decl list -> (tc_type, [> error ]) result
 
 val infer_type_expr: tc_context -> LA.expr -> (tc_type, [> error]) result
 (** Infer type of Lustre expression given a typing context *)
